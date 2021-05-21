@@ -1,9 +1,12 @@
 import { bufferToHex, sha3 } from '../utils';
+import {isBech32Address, decodeBech32Address, toBech32Address} from '@alayanetwork/web3-utils'
 
 export class Address {
   public static ZERO = new Address(Buffer.alloc(20));
+  hrp: string;
 
   constructor(private buffer: Buffer) {
+    this.hrp = "atp";
     if (buffer.length === 32) {
       if (!buffer.slice(0, 12).equals(Buffer.of(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0))) {
         throw new Error('Invalid address buffer.');
@@ -19,10 +22,16 @@ export class Address {
     if (!Address.isAddress(address)) {
       throw new Error(`Invalid address string: ${address}`);
     }
+    if (isBech32Address(address)) {
+      address = decodeBech32Address(address);
+    }
     return new Address(Buffer.from(address.replace(/^0x/i, ''), 'hex'));
   }
 
   public static isAddress(address: string) {
+    if (isBech32Address(address)) {
+      return true;
+    }
     if (!/^(0x)?[0-9a-f]{40}$/i.test(address)) {
       // Does not have the basic requirements of an address.
       return false;
@@ -79,7 +88,7 @@ export class Address {
   }
 
   public toString() {
-    return Address.toChecksumAddress(bufferToHex(this.buffer));
+    return toBech32Address(this.hrp, (Address.toChecksumAddress(bufferToHex(this.buffer))));
   }
 
   public toBuffer() {
@@ -90,5 +99,9 @@ export class Address {
     const buffer = Buffer.alloc(32);
     this.buffer.copy(buffer, 12);
     return buffer;
+  }
+
+  public setHrp(hrp) {
+    this.hrp = hrp;
   }
 }
